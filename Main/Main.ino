@@ -1,3 +1,22 @@
+/****************************************************************************
+ *      .______     ______   .______             __  .___________.          * 
+ *      |   _  \   /  __  \  |   _  \           |  | |           |          *
+ *      |  |_)  | |  |  |  | |  |_)  |  ______  |  | `---|  |----`          *
+ *      |   _  <  |  |  |  | |   ___/  |______| |  |     |  |               *     
+ *      |  |_)  | |  `--'  | |  |               |  |     |  |               *     
+ *      |______/   \______/  | _|               |__|     |__|               *
+ *                                                                          *
+ *    SYDE 192L project                                                     *
+ *    July 2016                                                             *
+ *                                                                          *
+ *    By:                                                                   *
+ *       Ashley Hu                                                          *
+ *       Micahel Shiozaki                                                   *
+ *       Sam Yuyitung                                                       *
+ *                                                                          *
+ *    Read in depth description in project_desc.txt                         *
+ *                                                                          *
+ ***************************************************************************/
 
 //START STRUCT / VARIABLE DECLARATION
 struct Player {
@@ -5,7 +24,6 @@ struct Player {
   int score;
   double pTime;
   int inputPin [3];
-
 };
 
 
@@ -24,15 +42,17 @@ int startButton = 7;
     1 - in game (two player) Timed
     2 - post game / game over
 */
-int gameState = 0;
-
+int gameState;
+boolean seenScores;
 void setup() {
   p1 = initPlayer(1);
   p2 = initPlayer(2);
   setupPins();
 
+  gameState = 0;
+  seenScores = false;
 }
-/**
+/*
    Pin - Usage
 
    0 - P1 input 1 (button)
@@ -44,17 +64,17 @@ void setup() {
    5 - P2 input 3 (button)
    6
    7 - Start button
-   8
+   8 - Pause button? 
    9
    10 - LED Choice 1 (green)
    11 - LED Choice 2 (red)
    12 - LED Choice 3 (blue)
 
 */
-
 void setupPins() {
   //Setup start button
   pinMode(startButton, INPUT);
+  pinMode(pauseButton, INPUT);
 
   //Set led pin 10,11,12 as OUTPUTS
   for (int i = 0; i < 3; i++) {
@@ -75,8 +95,8 @@ void setupPins() {
   attachInterrupt(1, PLAYER_2_ISR, CHANGE);
 }
 
-/**
-   Init player (Nothing special)
+/*
+  Init player (Nothing special)
 */
 Player initPlayer(int playerNumber) {
   Player tempPlayer;
@@ -103,17 +123,45 @@ void loop() {
 
 
 }
-
+/*
+  Init state of the game, only exist until the start button is pressed
+*/
 void preGame() {
-
+  //Start game
+  if (digitalRead(startButton) == HIGH) {
+    startGame();
+  }
 }
+
+/*
+  Small transitions to signify the start of the game!
+*/
+
+void startGame() {
+  // Flash the lights 
+  // Play a sound
+  // LCD Stuff maybe?
+  gameState = 1;
+}
+
 
 void inGame() {
 
 }
 
-
+/*
+  State after game ends
+  Shows the score
+  option to restart game with start button push
+*/
 void postGame() {
+  showScores(){
+  
+   //Check to restart game 
+  if (digitalRead(startButton) == HIGH) {
+    startGame();
+  }
+
 
 }
 
@@ -121,7 +169,7 @@ void postGame() {
 //START INTERRUPTS
 
 void PLAYER_1_ISR() {
-
+  
 }
 
 void PLAYER_2_ISR() {
