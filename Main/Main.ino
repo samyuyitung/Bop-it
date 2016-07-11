@@ -1,22 +1,24 @@
 /****************************************************************************
- *      .______     ______   .______             __  .___________.          * 
- *      |   _  \   /  __  \  |   _  \           |  | |           |          *
- *      |  |_)  | |  |  |  | |  |_)  |  ______  |  | `---|  |----`          *
- *      |   _  <  |  |  |  | |   ___/  |______| |  |     |  |               *     
- *      |  |_)  | |  `--'  | |  |               |  |     |  |               *     
- *      |______/   \______/  | _|               |__|     |__|               *
- *                                                                          *
- *    SYDE 192L project                                                     *
- *    July 2016                                                             *
- *                                                                          *
- *    By:                                                                   *
- *       Ashley Hu                                                          *
- *       Micahel Shiozaki                                                   *
- *       Sam Yuyitung                                                       *
- *                                                                          *
- *    Read in depth description in project_desc.txt                         *
- *                                                                          *
- ***************************************************************************/
+        .______     ______   .______             __  .___________.
+        |   _  \   /  __  \  |   _  \           |  | |           |
+        |  |_)  | |  |  |  | |  |_)  |  ______  |  | `---|  |----`
+        |   _  <  |  |  |  | |   ___/  |______| |  |     |  |
+        |  |_)  | |  `--'  | |  |               |  |     |  |
+        |______/   \______/  | _|               |__|     |__|
+
+
+      SYDE 192L project
+      July 2016
+
+      By:
+         Ashley Hu
+         Micahel Shiozaki
+         Sam Yuyitung
+
+      Read in depth description in project_desc.txt
+*****************************************************************************/
+
+#include <LiquidCrystal.h>
 
 //START STRUCT / VARIABLE DECLARATION
 struct Player {
@@ -34,8 +36,10 @@ Player p2;
 //Middle leds to show which button to press.
 int choiceLed [3];
 
-//Button to start the game
+//Button to start / pause the game
 int startButton = 7;
+int pauseButton = 8;
+LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
 
 /**
     0 - init state no game played
@@ -64,7 +68,7 @@ void setup() {
    5 - P2 input 3 (button)
    6
    7 - Start button
-   8 - Pause button? 
+   8 - Pause button?
    9
    10 - LED Choice 1 (green)
    11 - LED Choice 2 (red)
@@ -120,8 +124,6 @@ void loop() {
       postGame();
       break;
   }
-
-
 }
 /*
   Init state of the game, only exist until the start button is pressed
@@ -138,10 +140,11 @@ void preGame() {
 */
 
 void startGame() {
-  // Flash the lights 
+  // Flash the lights
   // Play a sound
   // LCD Stuff maybe?
   gameState = 1;
+
 }
 
 
@@ -154,26 +157,28 @@ void inGame() {
   Shows the score
   option to restart game with start button push
 */
-void postGame() {
-  showScores(){
-  
-   //Check to restart game 
-  if (digitalRead(startButton) == HIGH) {
-    startGame();
-  }
-
-
+void gameOver() {
+  writeScores();
+  //allow them to see it before restarting
+  delay(5000);
+  //go to ready to start mode
+  gameMode = 0;
 }
 
-//END GAME STUFF
-//START INTERRUPTS
+/*
+   Print the players scores to the LCD
+*/
+void writeScores() {
 
+}
+//END GAME STUFF
+
+//START INTERRUPTS
 void PLAYER_1_ISR() {
-  
+
 }
 
 void PLAYER_2_ISR() {
 
 }
-
 //END INTERRUPTS
