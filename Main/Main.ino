@@ -12,7 +12,7 @@
 
       By:
          Ashley Hu
-         Micahel Shiozaki
+         Michael Shiozaki
          Sam Yuyitung
 
       Read in depth description in project_desc.txt
@@ -25,7 +25,7 @@ struct Player {
   int pName; //Name of the player ( 1 or 2 )
   int score;
   double pTime;
-  int inputPin [3];
+  int inputPin;
 };
 
 
@@ -35,6 +35,7 @@ Player p2;
 
 //Middle leds to show which button to press.
 int choiceLed [3];
+int roundLed;
 
 //Button to start / pause the game
 int startButton = 7;
@@ -51,31 +52,26 @@ boolean seenScores;
 void setup() {
   p1 = initPlayer(1);
   p2 = initPlayer(2);
-  setupPins();
-
+  setupDigitalPins();
+  setupAnalogPins();
   gameState = 0;
   seenScores = false;
 }
 /*
    Pin - Usage
 
-   0 - P1 input 1 (button)
-   1 - P1 input 2 (tilt)
-   2 - P1 input 3 (photo-resistor)
+   2 - player 1 interrupt
+   3 - player 2 interrupt
 
-   3 - P2 input 1 (photo-resistor)
-   4 - P2 input 2 (tilt)
-   5 - P2 input 3 (button)
-   6
    7 - Start button
    8 - Pause button?
-   9
+
    10 - LED Choice 1 (green)
    11 - LED Choice 2 (red)
    12 - LED Choice 3 (blue)
 
 */
-void setupPins() {
+void setupDigitalPins() {
   //Setup start button
   pinMode(startButton, INPUT);
   pinMode(pauseButton, INPUT);
@@ -84,14 +80,6 @@ void setupPins() {
   for (int i = 0; i < 3; i++) {
     choiceLed[i] = 10 + i;
     pinMode(choiceLed[i], OUTPUT);
-  }
-  //set up pins (0,1,2) as inputs for player 1
-  //   and pins (3,4,5) as inputs for player 2
-  for (int i = 0; i < 3; i++) {
-    p1.inputPin[i] = i;
-    p2.inputPin[i] = i + 3;
-    pinMode(p1.inputPin[i], INPUT);
-    pinMode(p2.inputPin[i], INPUT);
   }
 
   //Attach interrupts
@@ -106,8 +94,16 @@ Player initPlayer(int playerNumber) {
   Player tempPlayer;
   tempPlayer.pName = playerNumber;
   tempPlayer.score = tempPlayer.pTime = 0;
-
+  tempPlayer.inputPin = (playerNumber - 1) * 5;
   return tempPlayer;
+}
+/*
+  A0 - Player 1
+  A5 - Player 2
+*/
+void setupAnalogPins(){
+  pinMode(p1.inputPin, INPUT);
+  pinMode(p2.inputPin, INPUT);
 }
 
 // END INITIATION STUFF
@@ -149,8 +145,32 @@ void startGame() {
 
 
 void inGame() {
+  correctInput = startRound();
+  listenForResponse();
+  endRond();
+}
+
+/*
+  light up the pin for the round
+*/
+void startRound(){
+  roundLed = (int) rand() % 3
+  ledChoice += 7;
+  digitalWrite(ledChoice, HIGH);
+  p1.triggered = false;
+  p2.triggered = false;
+}
+
+void listenForResponse(){
+
+  while(true){
+    if(p1.triggered)
+
+  }
 
 }
+
+
 
 /*
   State after game ends
