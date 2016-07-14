@@ -26,6 +26,7 @@ struct Player {
   int score;
   double pTime;
   int inputPin;
+  int val;
 };
 
 
@@ -95,13 +96,15 @@ Player initPlayer(int playerNumber) {
   tempPlayer.pName = playerNumber;
   tempPlayer.score = tempPlayer.pTime = 0;
   tempPlayer.inputPin = (playerNumber - 1) * 5;
+  tempPlayer.val = -1;
+
   return tempPlayer;
 }
 /*
   A0 - Player 1
   A5 - Player 2
 */
-void setupAnalogPins(){
+void setupAnalogPins() {
   pinMode(p1.inputPin, INPUT);
   pinMode(p2.inputPin, INPUT);
 }
@@ -117,7 +120,7 @@ void loop() {
       inGame();
       break;
     case 2:
-      postGame();
+      gameOver();
       break;
   }
 }
@@ -153,23 +156,41 @@ void inGame() {
 /*
   light up the pin for the round
 */
-void startRound(){
+void startRound() {
   roundLed = (int) rand() % 3
-  ledChoice += 7;
+             ledChoice += 7;
   digitalWrite(ledChoice, HIGH);
   p1.triggered = false;
   p2.triggered = false;
 }
 
-void listenForResponse(){
-
-  while(true){
-    if(p1.triggered)
-
-  }
-
+void listenForResponse() {
+  if
 }
 
+/*
+ * Decode the trigger based off analog in value
+ */
+int decodeVal(int val) {
+
+  if (val < 50)
+    return 1;
+
+  else if (val < 80)
+    return 2;
+
+  else if (val < 120)
+    return 3;
+
+  else if (val < 180)
+    return 4;
+
+  else if (val < 220)
+    return 5;
+
+  return -1;
+
+}
 
 
 /*
@@ -195,10 +216,13 @@ void writeScores() {
 
 //START INTERRUPTS
 void PLAYER_1_ISR() {
+  p1.val = analogRead(p1.inputPin);
+  change = true;
 
 }
 
 void PLAYER_2_ISR() {
-
+  val = analogRead(p2.inputPin);
+  p2.trigger = true;
 }
 //END INTERRUPTS
