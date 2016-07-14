@@ -148,25 +148,37 @@ void startGame() {
 
 
 void inGame() {
-  correctInput = startRound();
+  startRound();
   listenForResponse();
-  endRond();
+  endRound();
 }
 
 /*
   light up the pin for the round
 */
 void startRound() {
-  roundLed = (int) rand() % 3
-             ledChoice += 7;
-  digitalWrite(ledChoice, HIGH);
+
+  roundLed = (int) rand() % 5;
+             roundLed += 9;
+  digitalWrite(roundLed, HIGH);
   p1.triggered = false;
   p2.triggered = false;
 }
 
 void listenForResponse() {
-  if
-}
+  while(true){
+    if(p1.trigger)
+      if(checkRight(decodeVal(p1.val))){
+          break;
+    }
+    else if(p2.trigger)
+      if(checkRight(decodeVal(p2.val))){
+          break;
+    }
+
+  }
+
+  }
 
 /*
  * Decode the trigger based off analog in value
@@ -174,24 +186,31 @@ void listenForResponse() {
 int decodeVal(int val) {
 
   if (val < 50)
-    return 1;
+    return 0;
 
   else if (val < 80)
-    return 2;
+    return 1;
 
   else if (val < 120)
-    return 3;
+    return 2;
 
   else if (val < 180)
-    return 4;
+    return 3;
 
   else if (val < 220)
-    return 5;
+    return 4;
 
   return -1;
 
 }
-
+boolean checkRight(int val){
+  if((val + 9) == roundLed)
+    return true;
+  return false;
+}
+void endRound(){
+  digitalWrite(roundLed, LOW);
+}
 
 /*
   State after game ends
