@@ -38,9 +38,9 @@ struct Player {
 };
 
 // My timer variables
-volatile unsigned long myTimer2_overflow_count = 0;
-volatile unsigned long myTimer2_millis = 0;
-static unsigned char myTimer2_fract = 0;
+volatile unsigned long myTimer0_overflow_count = 0;
+volatile unsigned long myTimer0_millis = 0;
+static unsigned char myTimer0_fract = 0;
 
 long roundStartTime;
 //Players of the game:
@@ -74,7 +74,8 @@ void setup() {
   p2 = initPlayer(2);
   setupDigitalPins();
   setupAnalogPins();
-  gameState = 0;
+  gameState = 1;
+  Serial.begin(9600);
 }
 /*
    NEED 1 MORE PIN FOR LCD
@@ -139,9 +140,11 @@ void loop() {
       preGame();
       break;
     case 1:
+    case 2:
+    case 3:
       inGame();
       break;
-    case 2:
+    case 4:
       gameOver();
       break;
   }
@@ -178,6 +181,7 @@ void startGame() {
 
 
 void inGame() {
+   
   switch (gameState) {
     case 1:
       startRound();
@@ -199,7 +203,7 @@ void startRound() {
   digitalWrite(roundLed, HIGH);
   p1.trigger = false;
   p2.trigger = false;
-  gameState += 1;
+  gameState = 2;
   roundStartTime = millis1();
 }
 
@@ -211,7 +215,7 @@ void startRound() {
 */
 void listenForResponse() {
   if (millis1() - roundStartTime >= 5000)
-    gameState++;
+    gameState = 3;
 
   if (p1.trigger && roundWinner != 1) {
     if (checkRight(decodeVal(p1.val))) {
@@ -230,7 +234,7 @@ void listenForResponse() {
   }
 
   if (p1.trigger && p2.trigger)
-    gameState++;
+    gameState = 3;
 }
 
 /*
@@ -304,14 +308,14 @@ void PLAYER_2_ISR() {
 }
 //END INTERRUPTS
 //START TIMER
-ISR(TIMER2_OVF_vect) {
-  myTimer2_millis += 1;
-  myTimer2_fract += 3;
-  if (myTimer2_fract >= 125) {
-    myTimer2_fract -= 125;
-    myTimer2_millis += 1;
+ISR(TIMER0_OVF_vect) {
+  myTimer0_millis += 1;
+  myTimer0_fract += 3;
+  if (myTimer0_fract >= 125) {
+    myTimer0_fract -= 125;
+    myTimer0_millis += 1;
   }
-  myTimer2_overflow_count++;
+  myTimer0_overflow_count++;
 }
 unsigned long millis1()
 {
@@ -321,9 +325,8 @@ unsigned long millis1()
   // disable interrupts while we read timer0_millis or we might get an
   // inconsistent value (e.g. in the middle of a write to timer0_millis)
   cli();
-  m = myTimer2_millis;
+  m = myTimer0_millis;
   SREG = oldSREG;
-  cli();
   return m;
 }
 //END TIMER
