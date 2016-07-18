@@ -120,7 +120,7 @@ Player initPlayer(int playerNumber) {
   tempPlayer.score = tempPlayer.pTime = 0;
   tempPlayer.inputPin = (playerNumber - 1) * 5;
   tempPlayer.val = -1;
-  
+
   return tempPlayer;
 }
 /*
@@ -156,6 +156,7 @@ void preGame() {
   //Start game
   if (digitalRead(startButton) == HIGH) {
     startGame();
+
   }
 }
 
@@ -167,10 +168,32 @@ void startGame() {
   // Flash the lights
   // Play a sound
   // LCD Stuff maybe?
-  gameState = 1;
+  //lights will all turn on one at a time, blink on and off twice
+  for (int i = 9; i < 14; i++) {
+  digitalWrite(i, HIGH); // turn all LEDs on
+  delay(800);
+}
+for (int i = 9; i < 14; i++) {
+  digitalWrite(i, LOW); // turn all LEDs off
+}
+delay(1000);
+for (int i = 9; i < 14; i++) {
+  digitalWrite(i, HIGH); // turn all LEDs on
+}
+delay(700);
+for (int i = 9; i < 14; i++) {
+  digitalWrite(i, LOW); // turn all LEDs off
+}
+delay(700);
+for (int i = 9; i < 14; i++) {
+  digitalWrite(i, HIGH); // turn all LEDs on
+}
+delay(700);
+for (int i = 9; i < 14; i++) {
+  digitalWrite(i, LOW); // turn all LEDs off
+}
 
-  for (int i = 9; 9 < 14; i++) {
-    digitalWrite(i, HIGH); // turn all LEDs on
+gamestate = 1;
   }
 
   delay(1000);
@@ -181,7 +204,7 @@ void startGame() {
 
 
 void inGame() {
-   
+
   switch (gameState) {
     case 1:
       startRound();
@@ -271,7 +294,7 @@ void endRound() {
 }
 
 void writeRoundTimes(){
-  
+
 }
 /*
   State after game ends
