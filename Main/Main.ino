@@ -19,6 +19,11 @@
 *****************************************************************************/
 
 #include <LiquidCrystal.h>
+#ifndef sbi
+#define sbi(sfr, bit) (_SFR_BYTE(sfr) |= _BV(bit))
+#endif
+
+
 
 //START STRUCT / VARIABLE DECLARATION
 struct Player {
@@ -28,6 +33,11 @@ struct Player {
   int inputPin;
   int val;
 };
+
+// My timer variables
+volatile unsigned long myTimer2_overflow_count = 0;
+volatile unsigned long myTimer2_millis = 0;
+static unsigned char myTimer2_fract = 0;
 
 
 //Players of the game:
@@ -245,3 +255,29 @@ void PLAYER_2_ISR() {
   p2.trigger = true;
 }
 //END INTERRUPTS
+//START TIMER
+
+ISR(TIMER2_OVF_vect) {
+  myTimer2_millis += 1;
+  myTimer2_fract += 3;
+  if (myTimer2_fract >= 125) {
+    myTimer2_fract -= 125;
+    myTimer2_millis += 1;
+  }
+  myTimer2_overflow_count++;
+}
+
+unsigned long millis1()
+{
+  unsigned long m;
+  uint8_t oldSREG = SREG;
+
+  // disable interrupts while we read timer0_millis or we might get an
+  // inconsistent value (e.g. in the middle of a write to timer0_millis)
+  cli();
+  m = myTimer2_millis;
+  SREG = oldSREG;
+  cli();
+  return m;
+}
+//END TIMER
