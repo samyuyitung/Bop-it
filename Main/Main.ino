@@ -69,18 +69,22 @@ void setup() {
   seenScores = false;
 }
 /*
+ * NEED 1 MORE PIN FOR LCD 
+ * 
    Pin - Usage
-
+   1 - LCD 
    2 - player 1 interrupt
    3 - player 2 interrupt
-
-   7 - Start button
-   8 - Pause button?
-
-   10 - LED Choice 1 (green)
-   11 - LED Choice 2 (red)
-   12 - LED Choice 3 (blue)
-
+   4 - LCD
+   5 - LCD
+   6 - LCD
+   7 - LCD 
+   8 - Start button
+   9 - LED Choice 1
+   10 - LED Choice 2 (green)
+   11 - LED Choice 3 (red)
+   12 - LED Choice 4 (blue)
+   13 - LED Choice 5
 */
 void setupDigitalPins() {
   //Setup start button
@@ -249,11 +253,11 @@ void gameOver() {
 /*
    Print the players scores to the LCD
 */
-void writeScores() {
+void writeScores() { 
+  lcd.locate(
 
 }
 //END GAME STUFF
-
 //START INTERRUPTS
 void PLAYER_1_ISR() {
   p1.val = analogRead(p1.inputPin);
