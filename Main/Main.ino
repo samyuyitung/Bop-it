@@ -154,6 +154,17 @@ void startGame() {
   // LCD Stuff maybe?
   gameState = 1;
 
+  for(int i=9; 9 < 14; i++){
+    digitalWrite(i, HIGH); // turn all LEDs on
+  }
+
+  delay 1000;
+  for(int i=9; 9 < 14; i++){
+    digitalWrite(i, LOW); // turn all LEDs off
+  }
+
+
+
 }
 
 
