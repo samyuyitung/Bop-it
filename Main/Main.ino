@@ -30,6 +30,7 @@ struct Player {
   int pName; //Name of the player ( 1 or 2 )
   int score;
   double pTime;
+  int roundTime;
   int inputPin;
   int val;
 };
@@ -39,7 +40,7 @@ volatile unsigned long myTimer2_overflow_count = 0;
 volatile unsigned long myTimer2_millis = 0;
 static unsigned char myTimer2_fract = 0;
 
-
+long roundStartTime;
 //Players of the game:
 Player p1;
 Player p2;
@@ -55,11 +56,17 @@ LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
 
 /**
     0 - init state no game played
-    1 - in game (two player) Timed
+
+    1 - start round
+    2 - listening
+    3 - post round
+
     2 - post game / game over
 */
 int gameState;
-boolean seenScores;
+int roundWinner;
+
+
 void setup() {
   p1 = initPlayer(1);
   p2 = initPlayer(2);
@@ -69,16 +76,16 @@ void setup() {
   seenScores = false;
 }
 /*
- * NEED 1 MORE PIN FOR LCD 
- * 
+   NEED 1 MORE PIN FOR LCD
+
    Pin - Usage
-   1 - LCD 
+   1 - LCD
    2 - player 1 interrupt
    3 - player 2 interrupt
    4 - LCD
    5 - LCD
    6 - LCD
-   7 - LCD 
+   7 - LCD
    8 - Start button
    9 - LED Choice 1
    10 - LED Choice 2 (green)
@@ -142,6 +149,7 @@ void loop() {
   Init state of the game, only exist until the start button is pressed
 */
 void preGame() {
+  gaG
   //Start game
   if (digitalRead(startButton) == HIGH) {
     startGame();
@@ -158,83 +166,103 @@ void startGame() {
   // LCD Stuff maybe?
   gameState = 1;
 
-  for(int i=9; 9 < 14; i++){
+  for (int i = 9; 9 < 14; i++) {
     digitalWrite(i, HIGH); // turn all LEDs on
   }
 
-  delay 1000;
-  for(int i=9; 9 < 14; i++){
+  delay(1000);
+  for (int i = 9; 9 < 14; i++) {
     digitalWrite(i, LOW); // turn all LEDs off
   }
-
-
-
 }
 
 
 void inGame() {
-  startRound();
-  listenForResponse();
-  endRound();
+  switch (gameState) {
+    case 1:
+      startRound();
+      break;
+    case 2:
+      listenForResponse();
+      break;
+    case 3:
+      endRound();
+      break;
+  }
 }
-
 /*
   light up the pin for the round
 */
 void startRound() {
-
   roundLed = (int) rand() % 5;
-             roundLed += 9;
+  roundLed += 9;
   digitalWrite(roundLed, HIGH);
   p1.triggered = false;
   p2.triggered = false;
+  gameState += 1;
+  roundStartTime = millis1();
 }
 
+/**
+   Listen for button interrupts.
+   Leave (change gameState) if:
+   1. More than 5 seconds
+   2. Both people have triggered it.
+*/
 void listenForResponse() {
-  while(true){
-    if(p1.trigger)
-      if(checkRight(decodeVal(p1.val))){
-          break;
-    }
-    else if(p2.trigger)
-      if(checkRight(decodeVal(p2.val))){
-          break;
-    }
+  if (millis1() - roundStartTime >= 5000)
+    gameState++;
 
+  if (p1.trigger && roundWinner != 1) {
+    if (checkRight(decodeVal(p1.val))) {
+      p1.score ++;
+      if (roundWinner == 0)
+        roundWinner = 1;
+    }
   }
 
+  else if (p2.trigger && roundWinner != 2) {
+    if (checkRight(decodeVal(p2.val))) {
+      p2.score ++;
+      if (roundWinner == 0)
+        roundWinner = 2;
+    }
   }
+
+  if (p1.trigger && p2.trigger)
+    gameState++;
+}
 
 /*
- * Decode the trigger based off analog in value
- */
+   Decode the trigger based off analog in value
+*/
 int decodeVal(int val) {
-
   if (val < 50)
     return 0;
-
   else if (val < 80)
     return 1;
-
   else if (val < 120)
     return 2;
-
   else if (val < 180)
     return 3;
-
   else if (val < 220)
     return 4;
 
+  //Nothing
   return -1;
 
 }
-boolean checkRight(int val){
-  if((val + 9) == roundLed)
+boolean checkRight(int val) {
+  if (val + 9 == roundLed)
     return true;
   return false;
 }
-void endRound(){
+
+void endRound() {
   digitalWrite(roundLed, LOW);
+
+  gameState = 1;
+
 }
 
 /*
@@ -247,31 +275,31 @@ void gameOver() {
   //allow them to see it before restarting
   delay(5000);
   //go to ready to start mode
-  gameMode = 0;
+  gameState = 0;
 }
 
 /*
    Print the players scores to the LCD
 */
-void writeScores() { 
-  lcd.locate(
+void writeScores() {
+  //  lcd.locate(
 
 }
 //END GAME STUFF
 //START INTERRUPTS
 void PLAYER_1_ISR() {
   p1.val = analogRead(p1.inputPin);
-  change = true;
-
+  p1.trigger = true;
+  p1.responseTime = millis1() - roundStartTime;
 }
 
 void PLAYER_2_ISR() {
   val = analogRead(p2.inputPin);
   p2.trigger = true;
+  p2.responseTime = millis1() - roundStartTime;
 }
 //END INTERRUPTS
 //START TIMER
-
 ISR(TIMER2_OVF_vect) {
   myTimer2_millis += 1;
   myTimer2_fract += 3;
@@ -281,7 +309,6 @@ ISR(TIMER2_OVF_vect) {
   }
   myTimer2_overflow_count++;
 }
-
 unsigned long millis1()
 {
   unsigned long m;
