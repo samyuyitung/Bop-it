@@ -176,23 +176,18 @@ void startGame() {
 for (int i = 9; i < 14; i++) {
   digitalWrite(i, LOW); // turn all LEDs off
 }
-delay(1000);
-for (int i = 9; i < 14; i++) {
-  digitalWrite(i, HIGH); // turn all LEDs on
-}
-delay(700);
-for (int i = 9; i < 14; i++) {
-  digitalWrite(i, LOW); // turn all LEDs off
-}
-delay(700);
-for (int i = 9; i < 14; i++) {
-  digitalWrite(i, HIGH); // turn all LEDs on
-}
-delay(700);
-for (int i = 9; i < 14; i++) {
-  digitalWrite(i, LOW); // turn all LEDs off
-}
+// all lights on with slight delay, all off
+for (int j = 0; j < 2; j++) { //all lights blink on and off twice
+delay (1000);
+  for (int i = 9; i < 14; i++) {
+    digitalWrite(i, HIGH); // turn all LEDs on
+  }
+  delay(700);
+  for (int i = 9; i < 14; i++) {
+    digitalWrite(i, LOW); // turn all LEDs off
+  }
 
+}
 gamestate = 1;
   }
 
