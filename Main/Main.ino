@@ -18,7 +18,6 @@
       Read in depth description in project_desc.txt
 *****************************************************************************/
 
-#include <LiquidCrystal.h>
 #ifndef sbi
 #define sbi(sfr, bit) (_SFR_BYTE(sfr) |= _BV(bit))
 #endif
@@ -33,7 +32,7 @@ struct Player {
   int roundTime;
   int inputPin;
   int val;
-  boolean trigger;
+  int trigger;
   double responseTime;
 };
 
@@ -52,9 +51,7 @@ int choiceLed [3];
 int roundLed;
 
 //Button to start / pause the game
-int startButton = 7;
-int pauseButton = 8;
-LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
+int startButton = 8;
 
 /**
     0 - init state no game played
@@ -74,8 +71,9 @@ void setup() {
   p2 = initPlayer(2);
   setupDigitalPins();
   setupAnalogPins();
-  gameState = 1;
+  gameState = 0;
   Serial.begin(9600);
+  srand(analogRead(0));
 }
 /*
    NEED 1 MORE PIN FOR LCD
@@ -98,7 +96,6 @@ void setup() {
 void setupDigitalPins() {
   //Setup start button
   pinMode(startButton, INPUT);
-  pinMode(pauseButton, INPUT);
 
   //Set led pin 10,11,12 as OUTPUTS
   for (int i = 0; i < 3; i++) {
@@ -107,8 +104,8 @@ void setupDigitalPins() {
   }
 
   //Attach interrupts
-  attachInterrupt(0, PLAYER_1_ISR, CHANGE);
-  attachInterrupt(1, PLAYER_2_ISR, CHANGE);
+  attachInterrupt(0, PLAYER_1_ISR, FALLING);
+  attachInterrupt(1, PLAYER_2_ISR, FALLING);
 }
 
 /*
@@ -123,6 +120,12 @@ Player initPlayer(int playerNumber) {
 
   return tempPlayer;
 }
+void resetGame(){
+  p1.score = 0;
+  p2.score = 0;
+  
+}
+
 /*
   A0 - Player 1
   A5 - Player 2
@@ -147,6 +150,20 @@ void loop() {
     case 4:
       gameOver();
       break;
+    case 5:
+      debug();
+      break;
+  }
+}
+void debug() {
+  if (p1.trigger) {
+    p1.trigger = false;
+    Serial.println(decodeVal(p1.val));
+  }
+
+  if (p2.trigger) {
+    p2.trigger = false;
+    Serial.println(decodeVal(p2.val));
   }
 }
 /*
@@ -154,8 +171,10 @@ void loop() {
 */
 void preGame() {
   //Start game
-  if (digitalRead(startButton) == HIGH) {
+  if (digitalRead(startButton) == LOW) {
+    resetGame();
     startGame();
+    
   }
 }
 
@@ -168,25 +187,28 @@ void startGame() {
   // Play a sound
   // LCD Stuff maybe?
   //lights will all turn on one at a time, blink on and off twice
+  Serial.println("Starting");
   for (int i = 9; i < 14; i++) {
-  digitalWrite(i, HIGH); // turn all LEDs on
-  delay(800);
-}
-for (int i = 9; i < 14; i++) {
-  digitalWrite(i, LOW); // turn all LEDs off
-}
-// all lights on with slight delay, all off
+    digitalWrite(i, HIGH); // turn all LEDs on
+    delay1(800);
+  }
+  for (int i = 9; i < 14; i++) {
+    digitalWrite(i, LOW); // turn all LEDs off
+  }
+  // all lights on with slight delay1, all off
   for (int j = 0; j < 2; j++) { //all lights blink on and off twice
-  delay (1000);
+    delay1 (500);
     for (int i = 9; i < 14; i++) {
       digitalWrite(i, HIGH); // turn all LEDs on
     }
-    delay(700);
+    delay1(600);
     for (int i = 9; i < 14; i++) {
       digitalWrite(i, LOW); // turn all LEDs off
     }
   }
-gamestate = 1;
+  delay1(1000);
+  gameState = 1;
+
 }
 
 
@@ -210,11 +232,14 @@ void inGame() {
 void startRound() {
   roundLed = (int) rand() % 5;
   roundLed += 9;
+  //  Serial.print("LIGHTING UP LED: ");
+  // Serial.println(roundLed);
   digitalWrite(roundLed, HIGH);
-  p1.trigger = false;
-  p2.trigger = false;
+  p1.trigger = 0;
+  p2.trigger = 0;
   gameState += 1;
   roundStartTime = millis1();
+  roundWinner = 0;
 }
 
 /**
@@ -227,23 +252,44 @@ void listenForResponse() {
   if (millis1() - roundStartTime >= 5000)
     gameState = 3;
 
-  if (p1.trigger && roundWinner != 1) {
+  if (p1.trigger == 1) {
+    p1.trigger = 2;
+    Serial.print("Player 1 pressed a button ");
+
     if (checkRight(decodeVal(p1.val))) {
-      p1.score ++;
-      if (roundWinner == 0)
+
+      Serial.print("and it was the right one ");
+      if (roundWinner == 0) {
+        p1.score ++;
+        Serial.println("and he/she won the round!");
         roundWinner = 1;
-    }
+      } else
+      {
+        Serial.println("too bad he/she was too slow");
+      }
+    } else
+      Serial.println("too bad it was wrong");
   }
 
-  else if (p2.trigger && roundWinner != 2) {
+  else if (p2.trigger == 1) {
+    p2.trigger = 2;
+    Serial.print("Player 2 pressed a button ");
     if (checkRight(decodeVal(p2.val))) {
-      p2.score ++;
-      if (roundWinner == 0)
+      Serial.print("and it was the right one ");
+      if (roundWinner == 0) {
+        p2.score ++;
+        Serial.println("and he/she won the round!");
         roundWinner = 2;
-    }
+      } else
+        Serial.println("too bad he/she was too slow");
+
+    } else
+      Serial.println("too bad it was wrong");
+
+
   }
 
-  if (p1.trigger && p2.trigger)
+  if (p1.trigger == 2 && p2.trigger == 2 )
     gameState = 3;
 }
 
@@ -252,15 +298,15 @@ void listenForResponse() {
 */
 int decodeVal(int val) {
   if (val < 50)
-    return 0;
+    return 4;
   else if (val < 80)
-    return 1;
+    return 3;
   else if (val < 120)
     return 2;
   else if (val < 180)
-    return 3;
+    return 1;
   else if (val < 220)
-    return 4;
+    return 0;
 
   //Nothing
   return -1;
@@ -275,13 +321,19 @@ boolean checkRight(int val) {
 void endRound() {
   writeRoundTimes();
   digitalWrite(roundLed, LOW);
-
-  gameState = 1;
+  delay1(2000);
+  if (p1.score == 10 || p2.score == 10)
+    gameState = 4;
+  else
+    gameState = 1;
 
 }
 
-void writeRoundTimes(){
-
+void writeRoundTimes() {
+  Serial.print("Current score p1: ");
+  Serial.print(p1.score);
+  Serial.print(" p2: ");
+  Serial.println(p2.score);
 }
 /*
   State after game ends
@@ -290,9 +342,7 @@ void writeRoundTimes(){
 */
 void gameOver() {
   writeScores();
-  //allow them to see it before restarting
-  delay(5000);
-  //go to ready to start mode
+  
   gameState = 0;
 }
 
@@ -300,20 +350,27 @@ void gameOver() {
    Print the players scores to the LCD
 */
 void writeScores() {
-  //  lcd.locate(
+  if (p1.score == 10)
+    Serial.println("PLAYER 1 WINS!!!!!!");
+  else if (p2.score == 10)
+    Serial.println("PLAYER 2 WINS!!!!!!");
+  delay(5000);
+  gameState = 0;
 
 }
 //END GAME STUFF
 //START INTERRUPTS
 void PLAYER_1_ISR() {
   p1.val = analogRead(p1.inputPin);
-  p1.trigger = true;
+  if (p1.trigger == 0)
+    p1.trigger = 1;
   p1.responseTime = (millis1() - roundStartTime) / 1000;
 }
 
 void PLAYER_2_ISR() {
   p2.val = analogRead(p2.inputPin);
-  p2.trigger = true;
+  if (p2.trigger == 0)
+    p2.trigger = 1;
   p2.responseTime = (millis1() - roundStartTime) / 1000;
 }
 //END INTERRUPTS
@@ -339,4 +396,11 @@ unsigned long millis1()
   SREG = oldSREG;
   return m;
 }
+
+void delay1(long waitMillis) {
+  long startTime = millis1();
+  while (millis1() - startTime < waitMillis)
+    delay(1);
+}
+
 //END TIMER
