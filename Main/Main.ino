@@ -33,6 +33,8 @@ struct Player {
   int roundTime;
   int inputPin;
   int val;
+  boolean trigger;
+  double responseTime;
 };
 
 // My timer variables
@@ -73,7 +75,6 @@ void setup() {
   setupDigitalPins();
   setupAnalogPins();
   gameState = 0;
-  seenScores = false;
 }
 /*
    NEED 1 MORE PIN FOR LCD
@@ -118,7 +119,7 @@ Player initPlayer(int playerNumber) {
   tempPlayer.score = tempPlayer.pTime = 0;
   tempPlayer.inputPin = (playerNumber - 1) * 5;
   tempPlayer.val = -1;
-
+  
   return tempPlayer;
 }
 /*
@@ -149,7 +150,6 @@ void loop() {
   Init state of the game, only exist until the start button is pressed
 */
 void preGame() {
-  gaG
   //Start game
   if (digitalRead(startButton) == HIGH) {
     startGame();
@@ -197,8 +197,8 @@ void startRound() {
   roundLed = (int) rand() % 5;
   roundLed += 9;
   digitalWrite(roundLed, HIGH);
-  p1.triggered = false;
-  p2.triggered = false;
+  p1.trigger = false;
+  p2.trigger = false;
   gameState += 1;
   roundStartTime = millis1();
 }
@@ -259,12 +259,16 @@ boolean checkRight(int val) {
 }
 
 void endRound() {
+  writeRoundTimes();
   digitalWrite(roundLed, LOW);
 
   gameState = 1;
 
 }
 
+void writeRoundTimes(){
+  
+}
 /*
   State after game ends
   Shows the score
@@ -290,13 +294,13 @@ void writeScores() {
 void PLAYER_1_ISR() {
   p1.val = analogRead(p1.inputPin);
   p1.trigger = true;
-  p1.responseTime = millis1() - roundStartTime;
+  p1.responseTime = (millis1() - roundStartTime) / 1000;
 }
 
 void PLAYER_2_ISR() {
-  val = analogRead(p2.inputPin);
+  p2.val = analogRead(p2.inputPin);
   p2.trigger = true;
-  p2.responseTime = millis1() - roundStartTime;
+  p2.responseTime = (millis1() - roundStartTime) / 1000;
 }
 //END INTERRUPTS
 //START TIMER
