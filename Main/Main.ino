@@ -156,7 +156,6 @@ void preGame() {
   //Start game
   if (digitalRead(startButton) == HIGH) {
     startGame();
-
   }
 }
 
@@ -177,24 +176,17 @@ for (int i = 9; i < 14; i++) {
   digitalWrite(i, LOW); // turn all LEDs off
 }
 // all lights on with slight delay, all off
-for (int j = 0; j < 2; j++) { //all lights blink on and off twice
-delay (1000);
-  for (int i = 9; i < 14; i++) {
-    digitalWrite(i, HIGH); // turn all LEDs on
+  for (int j = 0; j < 2; j++) { //all lights blink on and off twice
+  delay (1000);
+    for (int i = 9; i < 14; i++) {
+      digitalWrite(i, HIGH); // turn all LEDs on
+    }
+    delay(700);
+    for (int i = 9; i < 14; i++) {
+      digitalWrite(i, LOW); // turn all LEDs off
+    }
   }
-  delay(700);
-  for (int i = 9; i < 14; i++) {
-    digitalWrite(i, LOW); // turn all LEDs off
-  }
-
-}
 gamestate = 1;
-  }
-
-  delay(1000);
-  for (int i = 9; 9 < 14; i++) {
-    digitalWrite(i, LOW); // turn all LEDs off
-  }
 }
 
 
@@ -221,7 +213,7 @@ void startRound() {
   digitalWrite(roundLed, HIGH);
   p1.trigger = false;
   p2.trigger = false;
-  gameState = 2;
+  gameState += 1;
   roundStartTime = millis1();
 }
 
