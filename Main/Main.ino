@@ -36,7 +36,6 @@ struct Player {
 };
 
 // My timer variables
-volatile unsigned long myTimer0_overflow_count = 0;
 volatile unsigned long myTimer0_millis = 0;
 static unsigned char myTimer0_fract = 0;
 
@@ -412,17 +411,13 @@ ISR(TIMER0_OVF_vect) {
     myTimer0_fract -= 125;
     myTimer0_millis += 1;
   }
-
-  myTimer0_overflow_count++;
-}
+ }
 
 unsigned long millis1() {
   unsigned long m;
-  uint8_t oldSREG = SREG;
   cli();
   m = myTimer0_millis;
-  SREG = oldSREG;
-
+  sei();
   return m;
 }
 
