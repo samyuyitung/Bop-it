@@ -14,9 +14,10 @@
          Ashley Hu
          Michael Shiozaki
          Sam Yuyitung
-         
+
 *****************************************************************************/
 
+//Allow for timer0 interrupts
 #ifndef sbi
 #define sbi(sfr, bit) (_SFR_BYTE(sfr) |= _BV(bit))
 #endif
@@ -28,7 +29,6 @@ struct Player {
   int pName; //Name of the player ( 1 or 2 )
   int score;
   double pTime;
-  int roundTime;
   int inputPin;
   int val;
   int trigger;
@@ -40,16 +40,14 @@ volatile unsigned long myTimer0_overflow_count = 0;
 volatile unsigned long myTimer0_millis = 0;
 static unsigned char myTimer0_fract = 0;
 
-long roundStartTime;
 //Players of the game:
 Player p1;
 Player p2;
 
 //Middle leds to show which button to press.
-int choiceLed [3];
 int roundLed;
 
-//Button to start / pause the game
+//Button to start pin location
 int startButton = 8;
 
 /**
@@ -59,10 +57,11 @@ int startButton = 8;
     2 - listening
     3 - post round
 
-    2 - post game / game over
+    4 - post game / game over
 */
 int gameState;
 int roundWinner;
+long roundStartTime;
 
 
 void setup() {
@@ -78,13 +77,13 @@ void setup() {
    NEED 1 MORE PIN FOR LCD
 
    Pin - Usage
-   1 - LCD
+   1 -
    2 - player 1 interrupt
    3 - player 2 interrupt
-   4 - LCD
-   5 - LCD
-   6 - LCD
-   7 - LCD
+   4 -
+   5 -
+   6 -
+   7 -
    8 - Start button
    9 - LED Choice 1
    10 - LED Choice 2 (green)
@@ -96,15 +95,18 @@ void setupDigitalPins() {
   //Setup start button
   pinMode(startButton, INPUT);
 
-  //Set led pin 10,11,12 as OUTPUTS
-  for (int i = 0; i < 3; i++) {
-    choiceLed[i] = 10 + i;
-    pinMode(choiceLed[i], OUTPUT);
-  }
-
   //Attach interrupts
-  attachInterrupt(0, PLAYER_1_ISR, CHANGE);
-  attachInterrupt(1, PLAYER_2_ISR, CHANGE);
+  attachInterrupt(0, PLAYER_1_ISR, CHANGE); //Pin 2
+  attachInterrupt(1, PLAYER_2_ISR, CHANGE); //Pin 3
+}
+
+/*
+  A0 - Player 1
+  A5 - Player 2
+*/
+void setupAnalogPins() {
+  pinMode(p1.inputPin, INPUT);
+  pinMode(p2.inputPin, INPUT);
 }
 
 /*
@@ -119,20 +121,7 @@ Player initPlayer(int playerNumber) {
 
   return tempPlayer;
 }
-void resetGame() {
-  p1.score = 0;
-  p2.score = 0;
 
-}
-
-/*
-  A0 - Player 1
-  A5 - Player 2
-*/
-void setupAnalogPins() {
-  pinMode(p1.inputPin, INPUT);
-  pinMode(p2.inputPin, INPUT);
-}
 
 // END INITIATION STUFF
 // START GAME STUFF
@@ -142,13 +131,18 @@ void loop() {
       preGame();
       break;
     case 1:
+      startRound();
+      break;
     case 2:
+      listenForResponse();
+      break;
     case 3:
-      inGame();
+      endRound();
       break;
     case 4:
       gameOver();
       break;
+    //Only used for testing
     case 5:
       debug();
       break;
@@ -168,12 +162,16 @@ void debug() {
 /*
   Init state of the game, only exist until the start button is pressed
 */
+void resetGame() {
+  p1.score = 0;
+  p2.score = 0;
+}
+
 void preGame() {
   //Start game
   if (digitalRead(startButton) == LOW) {
     resetGame();
-    startGame();
-
+    preGameLightsShow();
   }
 }
 
@@ -181,9 +179,10 @@ void preGame() {
   Small transitions to signify the start of the game!
 */
 
-void startGame() {
+void preGameLightsShow() {
   //lights will all turn on one at a time, blink on and off twice
-  Serial.println("Starting");
+  Serial.println("Starting Game");
+
   for (int i = 9; i < 14; i++) {
     digitalWrite(i, HIGH); // turn all LEDs on
     delay1(500);
@@ -191,8 +190,8 @@ void startGame() {
   for (int i = 9; i < 14; i++) {
     digitalWrite(i, LOW); // turn all LEDs off
   }
-  // all lights on with slight delay1, all off
-  for (int j = 0; j < 2; j++) { //all lights blink on and off twice
+  //Blink all leds twice
+  for (int j = 0; j < 2; j++) {
     delay1 (500);
     for (int i = 9; i < 14; i++) {
       digitalWrite(i, HIGH); // turn all LEDs on
@@ -202,39 +201,27 @@ void startGame() {
       digitalWrite(i, LOW); // turn all LEDs off
     }
   }
+
+  //Wait a second before starting
   delay1(1000);
+
   gameState = 1;
-
-}
-
-void inGame() {
-
-  switch (gameState) {
-    case 1:
-      startRound();
-      break;
-    case 2:
-      listenForResponse();
-      break;
-    case 3:
-      endRound();
-      break;
-  }
 }
 /*
   light up the pin for the round
 */
 void startRound() {
-  roundLed = (int) rand() % 5;
-  roundLed += 9;
-  //  Serial.print("LIGHTING UP LED: ");
-  // Serial.println(roundLed);
+  //Randomly select pin for round
+  roundLed = 9 + (int) rand() % 5;
+  //Turn it on!
   digitalWrite(roundLed, HIGH);
+  //reset some stuff
   p1.trigger = 0;
   p2.trigger = 0;
-  gameState += 1;
-  roundStartTime = millis1();
   roundWinner = 0;
+  gameState = 2;
+  //pull start time before switching
+  roundStartTime = millis1();
 }
 
 /**
@@ -244,16 +231,20 @@ void startRound() {
    2. Both people have triggered it.
 */
 void listenForResponse() {
+  //Go to next round if longer than 5 seconds
   if (millis1() - roundStartTime >= 5000) {
     Serial.println("Round over (Timed out)" );
     gameState = 3;
+    return;
   }
+
+  //TRIGGERED IF ISR'd
   if (p1.trigger == 1) {
     p1.trigger = 2;
     if (checkRight(decodeVal(p1.val))) {
       if (roundWinner == 0) {
-        p1.score ++;
         roundWinner = 1;
+        p1.score ++;
         Serial.print("RIGHT ON:  ");
       } else
         Serial.print("TOO SLOW:  ");
@@ -264,13 +255,13 @@ void listenForResponse() {
     Serial.print("Player 1 Response time: ");
     Serial.println(p1.responseTime);
   }
-
-  else if (p2.trigger == 1) {
+  
+  if (p2.trigger == 1) {
     p2.trigger = 2;
     if (checkRight(decodeVal(p2.val))) {
       if (roundWinner == 0) {
-        p2.score ++;
         roundWinner = 2;
+        p2.score ++;
         Serial.print("RIGHT ON:  ");
       } else
         Serial.print("TOO SLOW:  ");
@@ -280,8 +271,8 @@ void listenForResponse() {
 
     Serial.print("Player 2 Response time: ");
     Serial.println(p2.responseTime);
-
   }
+
   if (p1.trigger == 2 && p2.trigger == 2 )
     gameState = 3;
 }
@@ -301,7 +292,7 @@ int decodeVal(int val) {
   else if (val < 220)
     return 0;
 
-  //Nothing
+  //Nothing or something not known
   return -1;
 
 }
@@ -313,9 +304,10 @@ boolean checkRight(int val) {
 }
 
 void endRound() {
-  writeRoundTimes();
+  writeCurrentScore();
   digitalWrite(roundLed, LOW);
   delay1(2000);
+
   if (p1.score == 10 || p2.score == 10)
     gameState = 4;
   else
@@ -323,14 +315,14 @@ void endRound() {
 
 }
 
-void writeRoundTimes() {
+void writeCurrentScore() {
   Serial.println("Current score");
   Serial.print("p1: ");
   Serial.print(p1.score);
   Serial.print(" p2: ");
   Serial.println(p2.score);
   Serial.println("");
-  
+
 }
 
 /*
@@ -340,7 +332,7 @@ void writeRoundTimes() {
 */
 void gameOver() {
   writeScores();
-
+  endingLights();
   gameState = 0;
 }
 
@@ -352,8 +344,6 @@ void writeScores() {
     Serial.println("PLAYER 1 WINS!");
   else if (p2.score == 10)
     Serial.println("PLAYER 2 WINS!");
-  endingLights();
-  gameState = 0;
 }
 
 void endingLights() {
@@ -368,7 +358,7 @@ void endingLights() {
       digitalWrite(i, LOW); // turn all LEDs off
     }
   }
-  for (int i = 13; i >=9; i--) {
+  for (int i = 13; i >= 9; i--) {
     digitalWrite(i, HIGH); // turn all LEDs on
     delay1(500);
   }
@@ -381,42 +371,56 @@ void endingLights() {
 
 }
 //END GAME STUFF
+
 //START INTERRUPTS
 void PLAYER_1_ISR() {
-  
   p1.val = analogRead(p1.inputPin);
+  p1.responseTime = (millis1() - roundStartTime) / 1000.0;
+  //only allow one read per round
   if (p1.trigger == 0)
     p1.trigger = 1;
-  p1.responseTime = (millis1() - roundStartTime) / 1000.0;
 }
 
 void PLAYER_2_ISR() {
   p2.val = analogRead(p2.inputPin);
+  p2.responseTime = (millis1() - roundStartTime) / 1000.0;
   if (p2.trigger == 0)
     p2.trigger = 1;
-  p2.responseTime = (millis1() - roundStartTime) / 1000.0;
 }
 //END INTERRUPTS
-
 //START TIMER
+/**
+   HOTW: (How our timer work);
+   Each clock cycle is 250,000 hz or 0.000004s --> 0.004 ms
+   everytime it overflows, 1.024 ms has elapsed
+   So what we do is:
+
+   Math stuff:
+   1 / 0.024 = 41.6667 <-- every 41.667 clock overflows we gotta add an extra millis;
+   since this is a fraction we triple the addition so that we add A
+   every overflow add 1 to millis and add 3 to fraction
+*/
+
+
 ISR(TIMER0_OVF_vect) {
-  
   myTimer0_millis += 1;
   myTimer0_fract += 3;
+  //add the compounded 0.024 and reset decimal counter.
   if (myTimer0_fract >= 125) {
     myTimer0_fract -= 125;
     myTimer0_millis += 1;
   }
+
   myTimer0_overflow_count++;
 }
 
-unsigned long millis1(){
+unsigned long millis1() {
   unsigned long m;
   uint8_t oldSREG = SREG;
   cli();
   m = myTimer0_millis;
   SREG = oldSREG;
-  
+
   return m;
 }
 
@@ -425,5 +429,4 @@ void delay1(long waitMillis) {
   while (millis1() - startTime < waitMillis)
     delay(1);
 }
-
 //END TIMER
