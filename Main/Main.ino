@@ -388,6 +388,8 @@ void PLAYER_2_ISR() {
     p2.trigger = 1;
 }
 //END INTERRUPTS
+
+
 //START TIMER
 /**
    HOTW: (How our timer work);
