@@ -14,8 +14,7 @@
          Ashley Hu
          Michael Shiozaki
          Sam Yuyitung
-
-      Read in depth description in project_desc.txt
+         
 *****************************************************************************/
 
 #ifndef sbi
@@ -104,8 +103,8 @@ void setupDigitalPins() {
   }
 
   //Attach interrupts
-  attachInterrupt(0, PLAYER_1_ISR, FALLING);
-  attachInterrupt(1, PLAYER_2_ISR, FALLING);
+  attachInterrupt(0, PLAYER_1_ISR, CHANGE);
+  attachInterrupt(1, PLAYER_2_ISR, CHANGE);
 }
 
 /*
@@ -120,10 +119,10 @@ Player initPlayer(int playerNumber) {
 
   return tempPlayer;
 }
-void resetGame(){
+void resetGame() {
   p1.score = 0;
   p2.score = 0;
-  
+
 }
 
 /*
@@ -174,7 +173,7 @@ void preGame() {
   if (digitalRead(startButton) == LOW) {
     resetGame();
     startGame();
-    
+
   }
 }
 
@@ -183,14 +182,11 @@ void preGame() {
 */
 
 void startGame() {
-  // Flash the lights
-  // Play a sound
-  // LCD Stuff maybe?
   //lights will all turn on one at a time, blink on and off twice
   Serial.println("Starting");
   for (int i = 9; i < 14; i++) {
     digitalWrite(i, HIGH); // turn all LEDs on
-    delay1(800);
+    delay1(500);
   }
   for (int i = 9; i < 14; i++) {
     digitalWrite(i, LOW); // turn all LEDs off
@@ -201,7 +197,7 @@ void startGame() {
     for (int i = 9; i < 14; i++) {
       digitalWrite(i, HIGH); // turn all LEDs on
     }
-    delay1(600);
+    delay1(500);
     for (int i = 9; i < 14; i++) {
       digitalWrite(i, LOW); // turn all LEDs off
     }
@@ -210,7 +206,6 @@ void startGame() {
   gameState = 1;
 
 }
-
 
 void inGame() {
 
@@ -249,46 +244,44 @@ void startRound() {
    2. Both people have triggered it.
 */
 void listenForResponse() {
-  if (millis1() - roundStartTime >= 5000)
+  if (millis1() - roundStartTime >= 5000) {
+    Serial.println("Round over (Timed out)" );
     gameState = 3;
-
+  }
   if (p1.trigger == 1) {
     p1.trigger = 2;
-    Serial.print("Player 1 pressed a button ");
-
     if (checkRight(decodeVal(p1.val))) {
-
-      Serial.print("and it was the right one ");
       if (roundWinner == 0) {
         p1.score ++;
-        Serial.println("and he/she won the round!");
         roundWinner = 1;
+        Serial.print("RIGHT ON:  ");
       } else
-      {
-        Serial.println("too bad he/she was too slow");
-      }
-    } else
-      Serial.println("too bad it was wrong");
+        Serial.print("TOO SLOW:  ");
+    }
+    else
+      Serial.print("WRONG ONE: ");
+
+    Serial.print("Player 1 Response time: ");
+    Serial.println(p1.responseTime);
   }
 
   else if (p2.trigger == 1) {
     p2.trigger = 2;
-    Serial.print("Player 2 pressed a button ");
     if (checkRight(decodeVal(p2.val))) {
-      Serial.print("and it was the right one ");
       if (roundWinner == 0) {
         p2.score ++;
-        Serial.println("and he/she won the round!");
         roundWinner = 2;
+        Serial.print("RIGHT ON:  ");
       } else
-        Serial.println("too bad he/she was too slow");
+        Serial.print("TOO SLOW:  ");
+    }
+    else
+      Serial.print("WRONG ONE: ");
 
-    } else
-      Serial.println("too bad it was wrong");
-
+    Serial.print("Player 2 Response time: ");
+    Serial.println(p2.responseTime);
 
   }
-
   if (p1.trigger == 2 && p2.trigger == 2 )
     gameState = 3;
 }
@@ -312,6 +305,7 @@ int decodeVal(int val) {
   return -1;
 
 }
+
 boolean checkRight(int val) {
   if (val + 9 == roundLed)
     return true;
@@ -330,11 +324,15 @@ void endRound() {
 }
 
 void writeRoundTimes() {
-  Serial.print("Current score p1: ");
+  Serial.println("Current score");
+  Serial.print("p1: ");
   Serial.print(p1.score);
   Serial.print(" p2: ");
   Serial.println(p2.score);
+  Serial.println("");
+  
 }
+
 /*
   State after game ends
   Shows the score
@@ -342,7 +340,7 @@ void writeRoundTimes() {
 */
 void gameOver() {
   writeScores();
-  
+
   gameState = 0;
 }
 
@@ -351,31 +349,58 @@ void gameOver() {
 */
 void writeScores() {
   if (p1.score == 10)
-    Serial.println("PLAYER 1 WINS!!!!!!");
+    Serial.println("PLAYER 1 WINS!");
   else if (p2.score == 10)
-    Serial.println("PLAYER 2 WINS!!!!!!");
-  delay(5000);
+    Serial.println("PLAYER 2 WINS!");
+  endingLights();
   gameState = 0;
+}
+
+void endingLights() {
+  //lights will all turn on one at a time, blink on and off twice
+  for (int j = 0; j < 2; j++) { //all lights blink on and off twice
+    delay1 (500);
+    for (int i = 9; i < 14; i++) {
+      digitalWrite(i, HIGH); // turn all LEDs on
+    }
+    delay1(500);
+    for (int i = 9; i < 14; i++) {
+      digitalWrite(i, LOW); // turn all LEDs off
+    }
+  }
+  for (int i = 13; i >=9; i--) {
+    digitalWrite(i, HIGH); // turn all LEDs on
+    delay1(500);
+  }
+  for (int i = 9; i < 14; i++) {
+    digitalWrite(i, LOW); // turn all LEDs off
+  }
+  // all lights on with slight delay1, all off
+
+  delay1(1000);
 
 }
 //END GAME STUFF
 //START INTERRUPTS
 void PLAYER_1_ISR() {
+  
   p1.val = analogRead(p1.inputPin);
   if (p1.trigger == 0)
     p1.trigger = 1;
-  p1.responseTime = (millis1() - roundStartTime) / 1000;
+  p1.responseTime = (millis1() - roundStartTime) / 1000.0;
 }
 
 void PLAYER_2_ISR() {
   p2.val = analogRead(p2.inputPin);
   if (p2.trigger == 0)
     p2.trigger = 1;
-  p2.responseTime = (millis1() - roundStartTime) / 1000;
+  p2.responseTime = (millis1() - roundStartTime) / 1000.0;
 }
 //END INTERRUPTS
+
 //START TIMER
 ISR(TIMER0_OVF_vect) {
+  
   myTimer0_millis += 1;
   myTimer0_fract += 3;
   if (myTimer0_fract >= 125) {
@@ -384,16 +409,14 @@ ISR(TIMER0_OVF_vect) {
   }
   myTimer0_overflow_count++;
 }
-unsigned long millis1()
-{
+
+unsigned long millis1(){
   unsigned long m;
   uint8_t oldSREG = SREG;
-
-  // disable interrupts while we read timer0_millis or we might get an
-  // inconsistent value (e.g. in the middle of a write to timer0_millis)
   cli();
   m = myTimer0_millis;
   SREG = oldSREG;
+  
   return m;
 }
 
