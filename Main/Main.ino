@@ -29,13 +29,14 @@
 //START STRUCT / VARIABLE DECLARATION
 struct Player {
   int pName; //Name of the player ( 1 or 2 )
-  int score;
-  double pTime;
-  int inputPin;
-  int val;
-  int trigger;
-  double responseTime;
-  String summary;
+  int score; //rounds won
+  int inputPin; //analog input pin
+  int val; //value of analog button press
+  int trigger; // 1 when interrupt is triggered
+  double responseTime; //time from start to end
+  String summary; //LCD output
+  double startPress; //start of button press
+  double pressDuration; //duration of button press
 };
 
 // My timer variables
@@ -74,7 +75,7 @@ void setup() {
   setupDigitalPins();
   setupAnalogPins();
   gameState = 0;
-  srand(analogRead(0));
+  srand(analogRead(2));
   lcd.begin(16, 2);
   initLCD();
 }
@@ -120,7 +121,7 @@ void setupAnalogPins() {
 Player initPlayer(int playerNumber) {
   Player tempPlayer;
   tempPlayer.pName = playerNumber;
-  tempPlayer.score = tempPlayer.pTime = 0;
+  tempPlayer.score = 0;
   tempPlayer.inputPin = (playerNumber - 1) * 5;
   tempPlayer.val = -1;
   tempPlayer.summary = "";
@@ -233,7 +234,9 @@ void startRound() {
   //Turn it on!
   digitalWrite(roundLed, HIGH);
   //reset some stuff
-  p1.trigger = p2.trigger = roundWinner = 0;
+  p1.trigger = p2.trigger =  roundWinner = 0;
+  p1.pressDuration = p2.pressDuration = -1;
+  p1.responseTime = p2.responseTime = -1;
   p1.summary = p2.summary = "";
   gameState = 2;
 
@@ -258,7 +261,12 @@ void lcdWrite(String line1, String line2) {
 void listenForResponse() {
   //Go to next round if longer than 5 seconds
   if (millis1() - roundStartTime >= 5000) {
-    lcdWrite("Timed out", "No winner");
+    String l2 = "no winner";
+    if (roundWinner == 1)
+      l2 = "p1 won";
+    if (roundWinner == 2)
+      l2 = "p2 won";
+    lcdWrite("Timed out", l2 );
     delay1(1000);
     gameState = 3;
     return;
@@ -337,24 +345,45 @@ void endRound() {
 
   digitalWrite(roundLed, LOW);
   writeCurrentScore();
-  delay1(2000);
   writeResponseTime();
-  delay1(2000);
-  //  writePressTime();
-  //  delay1(2000);
+  writePressTime();
   gameState = 1;
 }
 
 void writeCurrentScore() {
   lcdWrite("P1 Score: " + String(p1.score), "P2 Score: " + String(p2.score));
+  delay1(2000);
 }
 
 void writeResponseTime() {
-  lcdWrite("P1 res tm: " + String(p1.responseTime) + "s", "P2 res tm: " + String(p2.responseTime) + "s");
+  if (p1.responseTime + p2.responseTime == -2)
+    return;
+
+  String p1String = "N/A";
+  String p2String = "N/A";
+  if (p1.responseTime > 0)
+    p1String = String(p1.responseTime) + "s";
+
+  if (p2.responseTime > 0)
+    p2String = String(p2.responseTime) + "s";
+
+  lcdWrite("P1 res tm: " + p1String, "P2 res tm: " + p2String);
+  delay1(2000);
 }
 
 void writePressTime() {
-  lcdWrite("P1 pre tm: " + String(p1.score) + "s", "P2 pre tm: " + String(p2.score) + "s");
+  if (p1.pressDuration + p2.pressDuration == -2)
+    return;
+
+  String p1String = "N/A";
+  String p2String = "N/A";
+  if (p1.pressDuration > 0)
+    p1String = String(p1.pressDuration) + "s";
+
+  if (p2.pressDuration > 0)
+    p2String = String(p2.pressDuration) + "s";
+  lcdWrite("P1 pre tm: " + p1String, "P2 pre tm: " + p2String);
+  delay1(2000);
 }
 /*
   State after game ends
@@ -406,18 +435,29 @@ void endingLights() {
 
 //START INTERRUPTS
 void PLAYER_1_ISR() {
-  p1.val = analogRead(p1.inputPin);
-  p1.responseTime = (millis1() - roundStartTime) / 1000.0;
-  //only allow one read per round
-  if (p1.trigger == 0)
+  long iTime = millis1();
+  if (p1.trigger == 0) {
+    p1.val = analogRead(p1.inputPin);
+    p1.responseTime = (iTime - roundStartTime) / 1000.0;
+    //only allow one read per round
     p1.trigger = 1;
+    p1.startPress = iTime;
+  } else if ( p1.pressDuration < 0) {
+    p1.pressDuration = (iTime - p1.startPress) / 1000.0;
+  }
+
 }
 
 void PLAYER_2_ISR() {
-  p2.val = analogRead(p2.inputPin);
-  p2.responseTime = (millis1() - roundStartTime) / 1000.0;
-  if (p2.trigger == 0)
+  long iTime = millis1();
+  if (p2.trigger == 0) {
+    p2.val = analogRead(p2.inputPin);
+    p2.responseTime = (iTime - roundStartTime) / 1000.0;
     p2.trigger = 1;
+    p2.startPress = iTime;
+  } else if ( p2.pressDuration < 0) {
+    p2.pressDuration = (iTime - p2.startPress) / 1000.0;
+  }
 }
 //END INTERRUPTS
 
@@ -431,7 +471,7 @@ void PLAYER_2_ISR() {
 
    Math stuff:
    1 / 0.024 = 41.6667 <-- every 41.667 clock overflows we gotta add an extra millis;
-   since this is a fraction we triple the addition so that we add A
+   since this is a fraction we triple the addition so that we add An extra millis every 125 to deal with integers
    every overflow add 1 to millis and add 3 to fraction
 */
 
@@ -457,6 +497,6 @@ unsigned long millis1() {
 void delay1(long waitMillis) {
   long startTime = millis1();
   while (millis1() - startTime < waitMillis)
-    delay(1);
+    continue;
 }
 //END TIMER
