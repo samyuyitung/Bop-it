@@ -297,9 +297,10 @@ void listenForResponse() {
 
     lcdWrite("P1: " + p1.summary, "P2: " + p2.summary);
   }
-  if (p1.trigger == 2 && p2.trigger == 2 )
+  if (p1.trigger == 2 && p2.trigger == 2 ) {
     delay1(1000);
     gameState = 3;
+  }
 }
 
 /*
@@ -329,22 +330,32 @@ boolean checkRight(int val) {
 }
 
 void endRound() {
-  if (p1.score == 1)
+  if (p1.score == 10 || p2.score == 10) {
     gameState = 4;
-  else
-    gameState = 1;
-  writeCurrentScore();
+    return;
+  }
+
   digitalWrite(roundLed, LOW);
+  writeCurrentScore();
   delay1(2000);
-
-  //if (p1.score == 10 || p2.score == 10)
-
+  writeResponseTime();
+  delay1(2000);
+  //  writePressTime();
+  //  delay1(2000);
+  gameState = 1;
 }
 
 void writeCurrentScore() {
   lcdWrite("P1 Score: " + String(p1.score), "P2 Score: " + String(p2.score));
 }
 
+void writeResponseTime() {
+  lcdWrite("P1 res tm: " + String(p1.responseTime) + "s", "P2 res tm: " + String(p2.responseTime) + "s");
+}
+
+void writePressTime() {
+  lcdWrite("P1 pre tm: " + String(p1.score) + "s", "P2 pre tm: " + String(p2.score) + "s");
+}
 /*
   State after game ends
   Shows the score
@@ -361,11 +372,11 @@ void gameOver() {
    Print the players scores to the LCD
 */
 void writeScores() {
-  if(p1.score == 10 ) 
+  if (p1.score == 10 )
     lcdWrite("Player 1 wins!", "final score " + String(p1.score) + "-" + String(p2.score));
-  else  
+  else
     lcdWrite("Player 2 wins!", "final score " + String(p2.score) + "-" + String(p1.score));
-    
+
 }
 void endingLights() {
   //lights will all turn on one at a time, blink on and off twice
