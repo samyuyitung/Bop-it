@@ -39,6 +39,7 @@ struct Player {
   double pressDuration; //duration of button press
 };
 
+const int POINTS_TO_WIN = 2;
 // My timer variables
 volatile unsigned long myTimer0_millis = 0;
 static unsigned char myTimer0_fract = 0;
@@ -65,7 +66,8 @@ int startButton = 8;
 int gameState;
 int roundWinner;
 long roundStartTime;
-
+long gameStartTime;
+long gameLengthTime;
 //LCD
 LiquidCrystal lcd(1, 0, 4, 5, 6, 7);
 
@@ -83,13 +85,14 @@ void setup() {
    NEED 1 MORE PIN FOR LCD
 
    Pin - Usage
-   1 -
+   0 - LCD enable
+   1 - LCD reg store
    2 - player 1 interrupt
    3 - player 2 interrupt
-   4 -
-   5 -
-   6 -
-   7 -
+   4 - LCD reg 1
+   5 - LCD reg 2
+   6 - LCD reg 3
+   7 - LCD reg 4
    8 - Start button
    9 - LED Choice 1
    10 - LED Choice 2 (green)
@@ -100,6 +103,9 @@ void setup() {
 void setupDigitalPins() {
   //Setup start button
   pinMode(startButton, INPUT);
+
+  for (int i = 9; i < 14; i++)
+    pinMode(i, OUTPUT);
 
   //Attach interrupts
   attachInterrupt(0, PLAYER_1_ISR, CHANGE); //Pin 2
@@ -215,14 +221,10 @@ void preGameLightsShow() {
   //Wait a second before starting
   delay1(1000);
   gameState = 1;
+  gameStartTime = millis1();
 }
 void resetLCD() {
-  lcd.clear();
-  lcd.setCursor(0, 0);
-  lcd.print("P1: ");
-
-  lcd.setCursor(0, 1);
-  lcd.print("P2: ");
+  lcdWrite("P1:", "P2:");
 }
 /*
   light up the pin for the round
@@ -256,7 +258,6 @@ void lcdWrite(String line1, String line2) {
   lcd.print(line1);
   lcd.setCursor(0, 1);
   lcd.print(line2);
-
 }
 void listenForResponse() {
   //Go to next round if longer than 5 seconds
@@ -338,7 +339,8 @@ boolean checkRight(int val) {
 }
 
 void endRound() {
-  if (p1.score == 10 || p2.score == 10) {
+  if (p1.score == POINTS_TO_WIN || p2.score == POINTS_TO_WIN) {
+    gameLengthTime = deltaTimeToSeconds(gameStartTime, millis1());
     gameState = 4;
     return;
   }
@@ -394,6 +396,8 @@ void gameOver() {
   writeScores();
   endingLights();
   delay1(4500);
+  showGameTime();
+  delay1(4500);
   resetGame();
 }
 
@@ -401,12 +405,15 @@ void gameOver() {
    Print the players scores to the LCD
 */
 void writeScores() {
-  if (p1.score == 10 )
+  if (p1.score == POINTS_TO_WIN )
     lcdWrite("Player 1 wins!", "final score " + String(p1.score) + "-" + String(p2.score));
   else
     lcdWrite("Player 2 wins!", "final score " + String(p2.score) + "-" + String(p1.score));
-
 }
+void showGameTime(){
+  lcdWrite("Game length was", "      " + String(gameLengthTime) + "s");
+}
+
 void endingLights() {
   //lights will all turn on one at a time, blink on and off twice
   for (int j = 0; j < 2; j++) { //all lights blink on and off twice
@@ -438,30 +445,28 @@ void PLAYER_1_ISR() {
   long iTime = millis1();
   if (p1.trigger == 0) {
     p1.val = analogRead(p1.inputPin);
-    p1.responseTime = (iTime - roundStartTime) / 1000.0;
+    p2.responseTime = deltaTimeToSeconds(roundStartTime, iTime);
     //only allow one read per round
     p1.trigger = 1;
     p1.startPress = iTime;
   } else if ( p1.pressDuration < 0) {
-    p1.pressDuration = (iTime - p1.startPress) / 1000.0;
+    p1.pressDuration = deltaTimeToSeconds(p1.startPress, iTime);
   }
 
 }
 
 void PLAYER_2_ISR() {
   long iTime = millis1();
+  p2.val = analogRead(p2.inputPin);
   if (p2.trigger == 0) {
-    p2.val = analogRead(p2.inputPin);
-    p2.responseTime = (iTime - roundStartTime) / 1000.0;
+    p2.responseTime = deltaTimeToSeconds(roundStartTime, iTime);
     p2.trigger = 1;
     p2.startPress = iTime;
   } else if ( p2.pressDuration < 0) {
-    p2.pressDuration = (iTime - p2.startPress) / 1000.0;
+    p2.pressDuration = deltaTimeToSeconds(p2.startPress, iTime);
   }
 }
 //END INTERRUPTS
-
-
 //START TIMER
 /**
    HOTW: (How our timer work);
@@ -498,5 +503,8 @@ void delay1(long waitMillis) {
   long startTime = millis1();
   while (millis1() - startTime < waitMillis)
     continue;
+}
+int deltaTimeToSeconds(long startTime, long endTime){
+  return (endTime - startTime) / 1000.0
 }
 //END TIMER
