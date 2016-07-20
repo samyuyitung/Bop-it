@@ -39,7 +39,6 @@ struct Player {
   double pressDuration; //duration of button press
 };
 
-const int POINTS_TO_WIN = 2;
 // My timer variables
 volatile unsigned long myTimer0_millis = 0;
 static unsigned char myTimer0_fract = 0;
@@ -68,6 +67,7 @@ int roundWinner;
 long roundStartTime;
 long gameStartTime;
 long gameLengthTime;
+const int POINTS_TO_WIN = 5;
 //LCD
 LiquidCrystal lcd(1, 0, 4, 5, 6, 7);
 
@@ -86,7 +86,7 @@ void setup() {
 
    Pin - Usage
    0 - LCD enable
-   1 - LCD reg store
+   1 - LCD
    2 - player 1 interrupt
    3 - player 2 interrupt
    4 - LCD reg 1
@@ -340,7 +340,7 @@ boolean checkRight(int val) {
 
 void endRound() {
   if (p1.score == POINTS_TO_WIN || p2.score == POINTS_TO_WIN) {
-    gameLengthTime = deltaTimeToSeconds(gameStartTime, millis1());
+    gameLengthTime = (millis1() - gameStartTime) / 1000.0;
     gameState = 4;
     return;
   }
@@ -395,9 +395,8 @@ void writePressTime() {
 void gameOver() {
   writeScores();
   endingLights();
-  delay1(4500);
   showGameTime();
-  delay1(4500);
+  delay1(2000);
   resetGame();
 }
 
@@ -411,9 +410,18 @@ void writeScores() {
     lcdWrite("Player 2 wins!", "final score " + String(p2.score) + "-" + String(p1.score));
 }
 void showGameTime(){
-  lcdWrite("Game length was", "      " + String(gameLengthTime) + "s");
+  lcdWrite("Game length was", "      " + secondsToMin(gameLengthTime));
 }
 
+String secondsToMin(int second){
+  if(second < 60)
+    return String(second) + "s";
+  
+  String minutes = String(second / 60);
+  String seconds = String(second % 60);
+
+  return minutes + ":" + seconds + "m";
+}
 void endingLights() {
   //lights will all turn on one at a time, blink on and off twice
   for (int j = 0; j < 2; j++) { //all lights blink on and off twice
@@ -435,7 +443,6 @@ void endingLights() {
   }
   // all lights on with slight delay1, all off
 
-  delay1(1000);
 
 }
 //END GAME STUFF
@@ -445,12 +452,12 @@ void PLAYER_1_ISR() {
   long iTime = millis1();
   if (p1.trigger == 0) {
     p1.val = analogRead(p1.inputPin);
-    p2.responseTime = deltaTimeToSeconds(roundStartTime, iTime);
+    p1.responseTime = (iTime - roundStartTime) / 1000.0;
     //only allow one read per round
     p1.trigger = 1;
     p1.startPress = iTime;
   } else if ( p1.pressDuration < 0) {
-    p1.pressDuration = deltaTimeToSeconds(p1.startPress, iTime);
+    p1.pressDuration = (iTime - p1.startPress) / 1000.0;
   }
 
 }
@@ -459,14 +466,16 @@ void PLAYER_2_ISR() {
   long iTime = millis1();
   p2.val = analogRead(p2.inputPin);
   if (p2.trigger == 0) {
-    p2.responseTime = deltaTimeToSeconds(roundStartTime, iTime);
+    p2.responseTime = (iTime - roundStartTime) / 1000.0;
     p2.trigger = 1;
     p2.startPress = iTime;
   } else if ( p2.pressDuration < 0) {
-    p2.pressDuration = deltaTimeToSeconds(p2.startPress, iTime);
+    p2.pressDuration = (iTime - p2.startPress) / 1000.0;
   }
 }
 //END INTERRUPTS
+
+
 //START TIMER
 /**
    HOTW: (How our timer work);
@@ -503,8 +512,5 @@ void delay1(long waitMillis) {
   long startTime = millis1();
   while (millis1() - startTime < waitMillis)
     continue;
-}
-int deltaTimeToSeconds(long startTime, long endTime){
-  return (endTime - startTime) / 1000.0
 }
 //END TIMER
