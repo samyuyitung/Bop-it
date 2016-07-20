@@ -22,6 +22,8 @@
 #define sbi(sfr, bit) (_SFR_BYTE(sfr) |= _BV(bit))
 #endif
 
+// include the LCD Library:
+#include <LiquidCrystal.h>
 
 
 //START STRUCT / VARIABLE DECLARATION
@@ -33,6 +35,7 @@ struct Player {
   int val;
   int trigger;
   double responseTime;
+  String summary;
 };
 
 // My timer variables
@@ -62,6 +65,8 @@ int gameState;
 int roundWinner;
 long roundStartTime;
 
+//LCD
+LiquidCrystal lcd(1, 0, 4, 5, 6, 7);
 
 void setup() {
   p1 = initPlayer(1);
@@ -69,8 +74,9 @@ void setup() {
   setupDigitalPins();
   setupAnalogPins();
   gameState = 0;
-  Serial.begin(9600);
   srand(analogRead(0));
+  lcd.begin(16, 2);
+  initLCD();
 }
 /*
    NEED 1 MORE PIN FOR LCD
@@ -117,11 +123,13 @@ Player initPlayer(int playerNumber) {
   tempPlayer.score = tempPlayer.pTime = 0;
   tempPlayer.inputPin = (playerNumber - 1) * 5;
   tempPlayer.val = -1;
-
+  tempPlayer.summary = "";
   return tempPlayer;
 }
 
-
+void initLCD() {
+  lcdWrite("  Press black", "button to start");
+}
 // END INITIATION STUFF
 // START GAME STUFF
 void loop() {
@@ -150,12 +158,10 @@ void loop() {
 void debug() {
   if (p1.trigger) {
     p1.trigger = false;
-    Serial.println(decodeVal(p1.val));
   }
 
   if (p2.trigger) {
     p2.trigger = false;
-    Serial.println(decodeVal(p2.val));
   }
 }
 /*
@@ -164,12 +170,13 @@ void debug() {
 void resetGame() {
   p1.score = 0;
   p2.score = 0;
+  initLCD();
+  gameState = 0;
 }
 
 void preGame() {
   //Start game
   if (digitalRead(startButton) == LOW) {
-    resetGame();
     preGameLightsShow();
   }
 }
@@ -179,8 +186,11 @@ void preGame() {
 */
 
 void preGameLightsShow() {
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  //         1234567890123456
+  lcd.print("Starting game...");
   //lights will all turn on one at a time, blink on and off twice
-  Serial.println("Starting Game");
 
   for (int i = 9; i < 14; i++) {
     digitalWrite(i, HIGH); // turn all LEDs on
@@ -200,25 +210,33 @@ void preGameLightsShow() {
       digitalWrite(i, LOW); // turn all LEDs off
     }
   }
-
+  resetLCD();
   //Wait a second before starting
   delay1(1000);
-
   gameState = 1;
+}
+void resetLCD() {
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("P1: ");
+
+  lcd.setCursor(0, 1);
+  lcd.print("P2: ");
 }
 /*
   light up the pin for the round
 */
 void startRound() {
+  resetLCD();
   //Randomly select pin for round
   roundLed = 9 + (int) rand() % 5;
   //Turn it on!
   digitalWrite(roundLed, HIGH);
   //reset some stuff
-  p1.trigger = 0;
-  p2.trigger = 0;
-  roundWinner = 0;
+  p1.trigger = p2.trigger = roundWinner = 0;
+  p1.summary = p2.summary = "";
   gameState = 2;
+
   //pull start time before switching
   roundStartTime = millis1();
 }
@@ -229,10 +247,19 @@ void startRound() {
    1. More than 5 seconds
    2. Both people have triggered it.
 */
+void lcdWrite(String line1, String line2) {
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print(line1);
+  lcd.setCursor(0, 1);
+  lcd.print(line2);
+
+}
 void listenForResponse() {
   //Go to next round if longer than 5 seconds
   if (millis1() - roundStartTime >= 5000) {
-    Serial.println("Round over (Timed out)" );
+    lcdWrite("Timed out", "No winner");
+    delay1(1000);
     gameState = 3;
     return;
   }
@@ -244,35 +271,34 @@ void listenForResponse() {
       if (roundWinner == 0) {
         roundWinner = 1;
         p1.score ++;
-        Serial.print("RIGHT ON:  ");
+        p1.summary = "Winner";
       } else
-        Serial.print("TOO SLOW:  ");
+        p1.summary = "Too slow";
     }
     else
-      Serial.print("WRONG ONE: ");
-
-    Serial.print("Player 1 Response time: ");
-    Serial.println(p1.responseTime);
+      p1.summary = "Wrong";
+    lcdWrite("P1: " + p1.summary, "P2: " + p2.summary);
   }
-  
+
+
+
   if (p2.trigger == 1) {
     p2.trigger = 2;
     if (checkRight(decodeVal(p2.val))) {
       if (roundWinner == 0) {
         roundWinner = 2;
         p2.score ++;
-        Serial.print("RIGHT ON:  ");
+        p2.summary = "Winner";
       } else
-        Serial.print("TOO SLOW:  ");
+        p2.summary = "Too slow";
     }
     else
-      Serial.print("WRONG ONE: ");
+      p2.summary = "Wrong";
 
-    Serial.print("Player 2 Response time: ");
-    Serial.println(p2.responseTime);
+    lcdWrite("P1: " + p1.summary, "P2: " + p2.summary);
   }
-
   if (p1.trigger == 2 && p2.trigger == 2 )
+    delay1(1000);
     gameState = 3;
 }
 
@@ -303,25 +329,20 @@ boolean checkRight(int val) {
 }
 
 void endRound() {
+  if (p1.score == 1)
+    gameState = 4;
+  else
+    gameState = 1;
   writeCurrentScore();
   digitalWrite(roundLed, LOW);
   delay1(2000);
 
-  if (p1.score == 10 || p2.score == 10)
-    gameState = 4;
-  else
-    gameState = 1;
+  //if (p1.score == 10 || p2.score == 10)
 
 }
 
 void writeCurrentScore() {
-  Serial.println("Current score");
-  Serial.print("p1: ");
-  Serial.print(p1.score);
-  Serial.print(" p2: ");
-  Serial.println(p2.score);
-  Serial.println("");
-
+  lcdWrite("P1 Score: " + String(p1.score), "P2 Score: " + String(p2.score));
 }
 
 /*
@@ -332,19 +353,20 @@ void writeCurrentScore() {
 void gameOver() {
   writeScores();
   endingLights();
-  gameState = 0;
+  delay1(4500);
+  resetGame();
 }
 
 /*
    Print the players scores to the LCD
 */
 void writeScores() {
-  if (p1.score == 10)
-    Serial.println("PLAYER 1 WINS!");
-  else if (p2.score == 10)
-    Serial.println("PLAYER 2 WINS!");
+  if(p1.score == 10 ) 
+    lcdWrite("Player 1 wins!", "final score " + String(p1.score) + "-" + String(p2.score));
+  else  
+    lcdWrite("Player 2 wins!", "final score " + String(p2.score) + "-" + String(p1.score));
+    
 }
-
 void endingLights() {
   //lights will all turn on one at a time, blink on and off twice
   for (int j = 0; j < 2; j++) { //all lights blink on and off twice
@@ -411,7 +433,7 @@ ISR(TIMER0_OVF_vect) {
     myTimer0_fract -= 125;
     myTimer0_millis += 1;
   }
- }
+}
 
 unsigned long millis1() {
   unsigned long m;
