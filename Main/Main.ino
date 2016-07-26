@@ -422,6 +422,7 @@ String secondsToMin(int second){
 
   return minutes + ":" + seconds + "m";
 }
+
 void endingLights() {
   //lights will all turn on one at a time, blink on and off twice
   for (int j = 0; j < 2; j++) { //all lights blink on and off twice
